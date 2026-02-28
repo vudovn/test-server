@@ -128,10 +128,18 @@ app.get('/api/stream', async (req, res) => {
         let currentUrl = m3u8Url;
         let baseUrl = new URL('.', currentUrl).href;
 
+
         let response = await fetch(currentUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Referer': baseUrl
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Origin': new URL(baseUrl).origin,
+                'Referer': new URL(baseUrl).origin + '/',
+                'Connection': 'keep-alive',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'cross-site'
             }
         });
 
@@ -155,7 +163,14 @@ app.get('/api/stream', async (req, res) => {
                 currentUrl = subPlaylistUrl;
                 baseUrl = new URL('.', currentUrl).href;
                 response = await fetch(currentUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0)', 'Referer': baseUrl }
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                        'Accept': '*/*',
+                        'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+                        'Origin': new URL(baseUrl).origin,
+                        'Referer': new URL(baseUrl).origin + '/',
+                        'Connection': 'keep-alive'
+                    }
                 });
                 m3u8Text = await response.text();
             }
@@ -223,8 +238,12 @@ app.get('/api/proxy-ts', async (req, res) => {
 
         const response = await fetch(tsUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': tsUrl
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Origin': new URL(tsUrl).origin,
+                'Referer': new URL(tsUrl).origin + '/',
+                'Connection': 'keep-alive'
             }
         });
         if (!response.ok) return res.status(response.status).send('Downstream server error');
