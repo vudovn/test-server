@@ -230,12 +230,37 @@ app.get('/api/stream', async (req, res) => {
     }
 });
 
-// ROUTE 3: Trả byte Array buffer cho file TS (Nhập luồng Video)
+// ROUTE 3: Trả byte Array buffer cho file TS (Nhập luồng Video có lưu File Cứng VPS)
 app.get('/api/proxy-ts', async (req, res) => {
     try {
         const tsUrl = req.query.url;
         if (!tsUrl) return res.status(400).send('No segment url provided');
 
+        // Tạo thư mục tạm cache_hls_ts
+        const cacheDir = path.join(__dirname, 'cache_hls_ts');
+        await fs.mkdir(cacheDir, { recursive: true }).catch(() => { });
+
+        // Tạo tên file từ URL để lưu ổ cứng VPS
+        const urlHash = Math.abs(tsUrl.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0));
+        const ext = path.extname(new URL(tsUrl).pathname) || '.ts';
+        const localTsPath = path.join(cacheDir, `${urlHash}${ext}`);
+
+        res.setHeader('Content-Type', 'video/mp2t');
+
+        try {
+            // Kiểm tra xem VPS đã tải file này về ổ cứng từ trước chưa
+            const stats = await fs.stat(localTsPath);
+            if (stats.size > 0) {
+                // Phục vụ thẳng file tĩnh từ ổ cứng VPS cho Client xem luôn (Bypass hoàn toàn Mạng gốc)
+                console.log(`[CACHE HIT] Phát trực tiếp từ Mạng VPS: /cache_hls_ts/${urlHash}${ext}`);
+                const cacheBuffer = await fs.readFile(localTsPath);
+                return res.end(cacheBuffer);
+            }
+        } catch (e) {
+            // File TS chưa có, Server sẽ làm nhiệm vụ đi chôm về
+        }
+
+        console.log(`[DOWNLOADING] VPS tải luồng mới từ Server chiếu mạng: ${tsUrl}`);
         const response = await fetch(tsUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -248,18 +273,15 @@ app.get('/api/proxy-ts', async (req, res) => {
         });
         if (!response.ok) return res.status(response.status).send('Downstream server error');
 
-        // Báo cho client kiểu nội dung là Segment Transport Stream
-        res.setHeader('Content-Type', 'video/mp2t');
+        const arrayBuf = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
 
-        if (response.body.pipe) {
-            response.body.pipe(res);
-        } else {
-            // Fallback:
-            const arrayBuf = await response.arrayBuffer();
-            res.end(Buffer.from(arrayBuf));
-        }
+        // 💾 GHI FILE .TS XUỐNG CỨNG TRÊN VPS (Để lần sau khán giả xem là nó load từ ổ cứng VPS, mượt không độ trễ)
+        await fs.writeFile(localTsPath, buffer);
+        res.end(buffer);
 
     } catch (err) {
+        console.error('Lỗi API TS Proxy:', err);
         res.status(500).end();
     }
 });
